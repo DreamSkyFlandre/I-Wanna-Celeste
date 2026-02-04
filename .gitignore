@@ -1,0 +1,5 @@
+# vscode
+.vscode/
+
+# highscore
+bin/highscore.txt
