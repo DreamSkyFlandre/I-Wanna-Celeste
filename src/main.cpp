@@ -14,7 +14,6 @@ private:
     const int KID_WIDTH = 128;
     const int KID_HEIGHT = 128;
 
-    const int GROUND_POS = 913; // 地面高度，根据背景图片得出
     const int X_POS = 300;
     float posY;
     float velocityY;
@@ -25,10 +24,11 @@ private:
     const float INITIAL_VELOCITY = -1150.f;
     const float MAX_JUMP_TIME = 0.24f;
     float jumpTimer;
-    bool wasJumpPressed; // 记录上一帧是否按跳，使得落地后按跳才能跳起来
+    bool wasJumpPressed; // 记录上一帧是否按跳，使得必须在落地后按跳才能跳起来
 
 public:
     sf::Sprite kidSprite;
+    int groundPos;
 
     enum class KidState {
         RUNNING,
@@ -39,11 +39,11 @@ public:
     KidState kidState;
 
     void reset() {
-        posY = GROUND_POS - KID_HEIGHT;
+        posY = groundPos - KID_HEIGHT;
         velocityY = 0.f;
         kidState = KidState::RUNNING;
         wasJumpPressed = false;
-        kidSprite.setPosition(X_POS, GROUND_POS - KID_HEIGHT);
+        kidSprite.setPosition(X_POS, groundPos - KID_HEIGHT);
     }
 
     // 加载纹理，适应大小
@@ -87,8 +87,8 @@ public:
                 velocityY += GRAVITY_NATURAL * dt;
                 posY += velocityY * dt;
                 // 检测落地
-                if (posY >= GROUND_POS - KID_HEIGHT) {
-                    posY = GROUND_POS - KID_HEIGHT;
+                if (posY >= groundPos - KID_HEIGHT) {
+                    posY = groundPos - KID_HEIGHT;
                     velocityY = 0.f;
                     kidState = KidState::RUNNING;
                 }
@@ -109,10 +109,6 @@ private:
 
 // 刺 类
 class Spike {
-private:
-    const int GROUND_POS = 913;
-    const int INITIAL_X_POS = 1920;
-
 public:
     int spikeWidth;
     int spikeHeight;
@@ -122,17 +118,60 @@ public:
     sf::Sprite spikeSprite;
 
     // 加载纹理并生成刺
-    void spawn(const sf::Texture& texture) {
+    void spawn(const sf::Texture& texture, int initialPosX, int groundPos) {
         spikeSprite.setTexture(texture);
         float scaleX = (float)spikeWidth / texture.getSize().x;
         float scaleY = (float)spikeHeight / texture.getSize().y;
         spikeSprite.setScale(scaleX, scaleY);
-        spikeSprite.setPosition(INITIAL_X_POS, GROUND_POS - spikeHeight);
+        spikeSprite.setPosition(initialPosX, groundPos - spikeHeight);
     }
 
     // 移动，每一帧进行
     void move(float dt) {
         spikeSprite.move(-velocityX * dt, 0.f);
+    }
+};
+
+// 雪花 类
+class Snow {
+private:
+    const int LEFT_BORDER = 300;
+    const int LOW_BORDER = 600;
+
+public:
+    int snowWidth;
+    int snowHeight;
+    int velocityX;
+    int velocityY;
+    int angleVelocity;
+
+    sf::Sprite snowSprite;
+
+    // 加载纹理并生成雪花
+    void spawn(const sf::Texture& texture, int windowWidth) {
+        snowSprite.setTexture(texture);
+        float scaleX = (float)snowWidth / texture.getSize().x;
+        float scaleY = (float)snowHeight / texture.getSize().y;
+        snowSprite.setScale(scaleX, scaleY);
+
+        int posX, posY;
+        int choice = rand() % 10;
+        if (choice < 7) { // 雪花生成在上方
+            posY = -snowHeight;
+            posX = LEFT_BORDER + rand() % (windowWidth - LEFT_BORDER);
+        } else { // 雪花生成在右方
+            posX = windowWidth;
+            posY = rand() % LOW_BORDER - snowHeight;
+        }
+
+        snowSprite.setPosition(posX, posY);
+        snowSprite.setOrigin(snowWidth / 2.f, snowHeight / 2.f);
+    }
+
+    // 平移与旋转
+    void move(float dt) {
+        snowSprite.move(-velocityX * dt, velocityY * dt);
+        snowSprite.rotate(angleVelocity * dt);
     }
 };
 
@@ -143,16 +182,21 @@ private:
     const int WINDOW_HEIGHT = 1080;
     sf::RenderWindow window;
     const int FRAME_RATE = 50; // I Wanna通常是50帧
+    const int GROUND_POS = 913; // 地面高度，根据背景图片得出
 
     // 贴图材质，包括Kid的一系列材质
     std::vector<sf::Texture> runTextures;
     std::vector<sf::Texture> riseTextures;
     std::vector<sf::Texture> fallTextures;
     Kid kid;
-    sf::Sprite background;
+    sf::Sprite background; // 上方背景
     sf::Texture backgroundTexture;
+    sf::Sprite land; // 下方地面
+    sf::Texture landTexture;
     sf::Texture spikeTexture;
     std::deque<Spike> spikes; // 其实queue够用了
+    sf::Texture snowTexture;
+    std::deque<Snow> snowflakes;
 
     enum class GameState {
         MENU,
@@ -165,12 +209,14 @@ private:
     sf::Clock clock;
     float kidTimer;
     float spikeTimer;
+    float snowTimer;
     float instTimer;
     const float KID_UPDATE_DELAY = 0.1f; // Kid贴图更新间隔
     float spikeDelay; // 刺生成间隔
+    float snowDelay; // 雪花生成间隔
     int score;
     int highScore;
-    bool instShow; // 按跳的指示，只会出现一次
+    bool instShow; // 指示文字，只会出现一次
 
     // 用于更新Kid的贴图
     int runFrame;
@@ -189,6 +235,18 @@ private:
     const int SPIKE_SPEED_RANGE = 150;
     const int MAX_SPIKE_SPEED = 1200;
 
+    // 雪花的随机相关参数，给定范围与下限
+    const float MIN_SNOW_DELAY = 0.1f;
+    const int SNOW_DELAY_RANGE = 300;
+    const int MIN_SNOW_SIZE = 20;
+    const int SNOW_SIZE_RANGE = 60;
+    const int MIN_SNOW_XSPEED = 300;
+    const int SNOW_XSPEED_RANGE = 900;
+    const int MIN_SNOW_YSPEED = 200;
+    const int SNOW_YSPEED_RANGE = 600;
+    const int MIN_SNOW_ANGLE_SPEED = -120;
+    const int SNOW_ANGLE_SPEED_RANGE = 240;
+
     sf::Font font;
     sf::Text scoreText;
     sf::Text titleText;
@@ -198,6 +256,7 @@ private:
     sf::Music bgmGaming;
     float currentVolume; // 游戏bgm而非标题bgm的音量
     const float MAX_VOLUME = 50.f;
+    const float TARGET_PAUSED_VOLUME = 15.f;
     const float VOLUME_CHANGE_SPEED = 20.f;
 
 public:
@@ -219,10 +278,11 @@ public:
             bgmMenu.setVolume(MAX_VOLUME);
         }
         
-        if (!backgroundTexture.loadFromFile("../resources/background.png")) {
+        if (!backgroundTexture.loadFromFile("../resources/background.png") || !landTexture.loadFromFile("../resources/land.png")) {
             exit(EXIT_FAILURE);
         } else {
             background.setTexture(backgroundTexture);
+            land.setTexture(landTexture);
         }
 
         sf::Texture tmpTexture;
@@ -252,11 +312,12 @@ public:
             }
         }
 
-        if(!spikeTexture.loadFromFile("../resources/spike.png")) {
+        if(!spikeTexture.loadFromFile("../resources/spike.png") || !snowTexture.loadFromFile("../resources/snowflake.png")) {
             exit(EXIT_FAILURE);
         }
 
         kid.setTexture(runTextures[0]);
+        kid.groundPos = GROUND_POS;
 
         // 文字初始化
         scoreText.setFont(font);
@@ -318,11 +379,9 @@ private:
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::P) {
                 if (state == GameState::PLAYING) {
                     state = GameState::PAUSED;
-                    bgmGaming.pause(); // 暂停音乐，音量不变
                 }
                 else if (state == GameState::PAUSED) {
                     state = GameState::PLAYING;
-                    bgmGaming.play();  // 恢复音乐
                 }
             }
 
@@ -333,7 +392,8 @@ private:
                     bgmGaming.stop();
                     bgmMenu.play();
                     bgmMenu.setVolume(MAX_VOLUME);
-                } else if (state == GameState::MENU) {
+                }
+                else if (state == GameState::MENU) {
                     window.close();
                 }
             }
@@ -346,24 +406,31 @@ private:
         float dt = clock.getElapsedTime().asSeconds();
         clock.restart();
 
-        // 暂停状态下不更新逻辑
-        if (state == GameState::PAUSED) {
-            clock.restart(); // 防止暂停时积累巨大的 dt 导致恢复瞬间瞬移
-            return;
-        }
-
-        // 对于游戏bgm，死亡后bgm渐弱，重开后bgm渐强
+        // 对于游戏bgm，死亡后bgm渐弱，重开后bgm渐强，暂停后bgm变化至较低音量
         if (state == GameState::PLAYING) {
             if (currentVolume < MAX_VOLUME) {
                 currentVolume += VOLUME_CHANGE_SPEED * dt;
-                if (currentVolume > MAX_VOLUME) currentVolume = MAX_VOLUME; // 上限
+                if (currentVolume > MAX_VOLUME) currentVolume = MAX_VOLUME; // 音量上限
                 bgmGaming.setVolume(currentVolume);
             }
         }
         else if (state == GameState::GAME_OVER) {
             if (currentVolume > 0.f) {
                 currentVolume -= VOLUME_CHANGE_SPEED * dt;
-                if (currentVolume < 0.f) currentVolume = 0.f; // 下限
+                if (currentVolume < 0.f) currentVolume = 0.f; // 死亡音量下限
+                bgmGaming.setVolume(currentVolume);
+            }
+        }
+        // 暂停后音量变化至目标音量
+        else if (state == GameState::PAUSED) {
+            if (currentVolume > TARGET_PAUSED_VOLUME) {
+                currentVolume -= VOLUME_CHANGE_SPEED * dt;
+                if (currentVolume < TARGET_PAUSED_VOLUME) currentVolume = TARGET_PAUSED_VOLUME;
+                bgmGaming.setVolume(currentVolume);
+            }
+            else if (currentVolume < TARGET_PAUSED_VOLUME) {
+                currentVolume += VOLUME_CHANGE_SPEED * dt;
+                if (currentVolume > TARGET_PAUSED_VOLUME) currentVolume = TARGET_PAUSED_VOLUME;
                 bgmGaming.setVolume(currentVolume);
             }
         }
@@ -371,7 +438,7 @@ private:
         // 以下逻辑仅在游戏进行时更新
         if (state != GameState::PLAYING) return;
 
-        // 跳跃提示只持续固定时长
+        // 跳跃与暂停提示只持续固定时长
         if (instShow) {
             instTimer += dt;
             if (instTimer > 5.f) instShow = false;
@@ -422,7 +489,7 @@ private:
             // 动态难度，分数越高，刺越快，但有上限
             newSpike.velocityX = std::min(MIN_SPIKE_SPEED + score / 2 + rand() % SPIKE_SPEED_RANGE, MAX_SPIKE_SPEED);
             newSpike.passed = false;
-            newSpike.spawn(spikeTexture);
+            newSpike.spawn(spikeTexture, WINDOW_WIDTH, GROUND_POS);
 
             // 新的刺入队
             spikes.push_back(newSpike);
@@ -504,6 +571,36 @@ private:
                 }
             }
         }
+
+        // 雪花的生成，参数随机
+        snowTimer += dt;
+        if (snowTimer >= snowDelay) {
+            snowTimer -= snowDelay;
+            snowDelay = MIN_SNOW_DELAY + (rand() % SNOW_DELAY_RANGE) / 1000.f;
+
+            Snow newSnowflake;
+            newSnowflake.snowWidth = MIN_SNOW_SIZE + rand() % SNOW_SIZE_RANGE;
+            newSnowflake.snowHeight = newSnowflake.snowWidth;
+            newSnowflake.velocityX = MIN_SNOW_XSPEED + rand() % SNOW_XSPEED_RANGE;
+            newSnowflake.velocityY = MIN_SNOW_YSPEED + rand() % SNOW_YSPEED_RANGE;
+            newSnowflake.angleVelocity = MIN_SNOW_ANGLE_SPEED + rand() % SNOW_ANGLE_SPEED_RANGE;
+            newSnowflake.spawn(snowTexture, WINDOW_WIDTH);
+
+            // 新的雪花入队
+            snowflakes.push_back(newSnowflake);
+        }
+
+        // 离开屏幕的雪花出队
+        if (!snowflakes.empty()) {
+            if (snowflakes[0].snowSprite.getPosition().x < -snowflakes[0].snowWidth / 2.f || snowflakes[0].snowSprite.getPosition().y > GROUND_POS + snowflakes[0].snowHeight / 2.f) {
+                snowflakes.pop_front();
+            }
+        }
+
+        // 全体雪花平移和旋转
+        for (auto& snow : snowflakes) {
+            snow.move(dt);
+        }
     }
 
     // 绘制窗口
@@ -514,12 +611,15 @@ private:
         switch (state) {
             case GameState::MENU:
                 window.draw(background);
+                window.draw(land);
 
                 drawTitle("I Wanna Celeste", sf::Color(0, 192, 255));
                 drawSubtext("High Score: " + std::to_string(highScore) + "\nPress ENTER to Start\nPress ESC to Exit", sf::Color::White);
                 break;
             case GameState::PLAYING:
                 window.draw(background);
+                drawSnow();
+                window.draw(land);
                 window.draw(kid.kidSprite);
                 drawSpikes();
 
@@ -529,12 +629,15 @@ private:
                 break;
             case GameState::GAME_OVER:
                 window.draw(background);
+                window.draw(land);
 
                 drawTitle("Game Over", sf::Color(128, 0, 0));
                 drawSubtext("Your Score: " + std::to_string(score) + "\nHigh Score: " + std::to_string(highScore) + "\nPress R to Restart\nPress ESC to Menu", sf::Color::White);
                 break;
             case GameState::PAUSED:
                 window.draw(background);
+                drawSnow();
+                window.draw(land);
                 window.draw(kid.kidSprite);
                 drawSpikes();
                 // 绘制半透明黑色遮罩，增加视觉层次
@@ -557,10 +660,13 @@ private:
         state = GameState::PLAYING;
         kidTimer = 0.f;
         spikeTimer = 0.f;
+        snowTimer = 0.f;
         instTimer = 0.f;
         clock.restart();
         spikeDelay = INITIAL_SPIKE_DELAY + (rand() % SPIKE_DELAY_RANGE) / 1000.f;
         spikes.clear();
+        snowDelay = MIN_SNOW_DELAY + (rand() % SNOW_DELAY_RANGE) / 1000.f;
+        snowflakes.clear();
         runFrame = 0;
         riseFrame = 0;
         fallFrame = 0;
@@ -613,6 +719,13 @@ private:
         has_pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
 
         return !(has_neg && has_pos);
+    }
+
+    // 绘制全体雪花
+    void drawSnow() {
+        for (auto& snow : snowflakes) {
+            window.draw(snow.snowSprite);
+        }
     }
 };
 
