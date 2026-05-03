@@ -1,5 +1,8 @@
 # vscode
 .vscode/
 
-# highscore
-bin/highscore.txt
+# resources
+resources/
+
+# binary files
+bin/

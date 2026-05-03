@@ -7,6 +7,22 @@
 #include <deque>
 #include <algorithm>
 #include <fstream>
+#include <random>
+
+namespace Random {
+    std::mt19937& engine() {
+        static std::mt19937 rng(static_cast<unsigned int>(std::time(nullptr)));
+        return rng;
+    }
+
+    int nextInt(int upperExclusive) {
+        if (upperExclusive <= 0) {
+            return 0;
+        }
+        std::uniform_int_distribution<int> dist(0, upperExclusive - 1);
+        return dist(engine());
+    }
+}
 
 // Kid 类
 class Kid {
@@ -155,13 +171,13 @@ public:
         snowSprite.setScale(scaleX, scaleY);
 
         int posX, posY;
-        int choice = rand() % 10;
+        int choice = Random::nextInt(10);
         if (choice < 7) { // 雪花生成在上方
             posY = -snowHeight;
-            posX = LEFT_BORDER + rand() % (windowWidth - LEFT_BORDER);
+            posX = LEFT_BORDER + Random::nextInt(windowWidth - LEFT_BORDER);
         } else { // 雪花生成在右方
             posX = windowWidth;
-            posY = rand() % LOW_BORDER - snowHeight;
+            posY = Random::nextInt(LOW_BORDER) - snowHeight;
         }
 
         snowSprite.setPosition(posX, posY);
@@ -262,7 +278,6 @@ private:
 public:
     Game() : window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "I Wanna Celeste"), instShow(true), state(GameState::MENU) {
         window.setFramerateLimit(FRAME_RATE);
-        srand(static_cast<unsigned int>(time(nullptr)));
 
         // 加载全部所需资源
         if (!font.loadFromFile("../resources/arial.ttf")) {
@@ -481,13 +496,13 @@ private:
         if (spikeTimer >= spikeDelay) {
             spikeTimer -= spikeDelay;
             // 动态难度，分数越高，刺频率越高，但有上限
-            spikeDelay = std::max(INITIAL_SPIKE_DELAY - score / 1000.f + (rand() % SPIKE_DELAY_RANGE) / 1000.f, MIN_SPIKE_DELAY);
+            spikeDelay = std::max(INITIAL_SPIKE_DELAY - score / 1000.f + Random::nextInt(SPIKE_DELAY_RANGE) / 1000.f, MIN_SPIKE_DELAY);
 
             Spike newSpike;
-            newSpike.spikeWidth = MIN_SPIKE_WIDTH + rand() % SPIKE_WIDTH_RANGE;
-            newSpike.spikeHeight = MIN_SPIKE_HEIGHT + rand() % SPIKE_HEIGHT_RANGE;
+            newSpike.spikeWidth = MIN_SPIKE_WIDTH + Random::nextInt(SPIKE_WIDTH_RANGE);
+            newSpike.spikeHeight = MIN_SPIKE_HEIGHT + Random::nextInt(SPIKE_HEIGHT_RANGE);
             // 动态难度，分数越高，刺越快，但有上限
-            newSpike.velocityX = std::min(MIN_SPIKE_SPEED + score / 2 + rand() % SPIKE_SPEED_RANGE, MAX_SPIKE_SPEED);
+            newSpike.velocityX = std::min(MIN_SPIKE_SPEED + score / 2 + Random::nextInt(SPIKE_SPEED_RANGE), MAX_SPIKE_SPEED);
             newSpike.passed = false;
             newSpike.spawn(spikeTexture, WINDOW_WIDTH, GROUND_POS);
 
@@ -576,14 +591,14 @@ private:
         snowTimer += dt;
         if (snowTimer >= snowDelay) {
             snowTimer -= snowDelay;
-            snowDelay = MIN_SNOW_DELAY + (rand() % SNOW_DELAY_RANGE) / 1000.f;
+            snowDelay = MIN_SNOW_DELAY + Random::nextInt(SNOW_DELAY_RANGE) / 1000.f;
 
             Snow newSnowflake;
-            newSnowflake.snowWidth = MIN_SNOW_SIZE + rand() % SNOW_SIZE_RANGE;
+            newSnowflake.snowWidth = MIN_SNOW_SIZE + Random::nextInt(SNOW_SIZE_RANGE);
             newSnowflake.snowHeight = newSnowflake.snowWidth;
-            newSnowflake.velocityX = MIN_SNOW_XSPEED + rand() % SNOW_XSPEED_RANGE;
-            newSnowflake.velocityY = MIN_SNOW_YSPEED + rand() % SNOW_YSPEED_RANGE;
-            newSnowflake.angleVelocity = MIN_SNOW_ANGLE_SPEED + rand() % SNOW_ANGLE_SPEED_RANGE;
+            newSnowflake.velocityX = MIN_SNOW_XSPEED + Random::nextInt(SNOW_XSPEED_RANGE);
+            newSnowflake.velocityY = MIN_SNOW_YSPEED + Random::nextInt(SNOW_YSPEED_RANGE);
+            newSnowflake.angleVelocity = MIN_SNOW_ANGLE_SPEED + Random::nextInt(SNOW_ANGLE_SPEED_RANGE);
             newSnowflake.spawn(snowTexture, WINDOW_WIDTH);
 
             // 新的雪花入队
@@ -663,9 +678,9 @@ private:
         snowTimer = 0.f;
         instTimer = 0.f;
         clock.restart();
-        spikeDelay = INITIAL_SPIKE_DELAY + (rand() % SPIKE_DELAY_RANGE) / 1000.f;
+        spikeDelay = INITIAL_SPIKE_DELAY + Random::nextInt(SPIKE_DELAY_RANGE) / 1000.f;
         spikes.clear();
-        snowDelay = MIN_SNOW_DELAY + (rand() % SNOW_DELAY_RANGE) / 1000.f;
+        snowDelay = MIN_SNOW_DELAY + Random::nextInt(SNOW_DELAY_RANGE) / 1000.f;
         snowflakes.clear();
         runFrame = 0;
         riseFrame = 0;
