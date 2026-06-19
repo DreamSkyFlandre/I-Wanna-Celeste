@@ -2,6 +2,54 @@
 
 #include "Random.h"
 
+int Snow::getSnowWidth() const {
+    return snowWidth;
+}
+
+void Snow::setSnowWidth(int width) {
+    snowWidth = width;
+}
+
+int Snow::getSnowHeight() const {
+    return snowHeight;
+}
+
+void Snow::setSnowHeight(int height) {
+    snowHeight = height;
+}
+
+int Snow::getVelocityX() const {
+    return velocityX;
+}
+
+void Snow::setVelocityX(int velocity) {
+    velocityX = velocity;
+}
+
+int Snow::getVelocityY() const {
+    return velocityY;
+}
+
+void Snow::setVelocityY(int velocity) {
+    velocityY = velocity;
+}
+
+int Snow::getAngleVelocity() const {
+    return angleVelocity;
+}
+
+void Snow::setAngleVelocity(int velocity) {
+    angleVelocity = velocity;
+}
+
+sf::Sprite& Snow::getSprite() {
+    return snowSprite;
+}
+
+const sf::Sprite& Snow::getSprite() const {
+    return snowSprite;
+}
+
 void Snow::spawn(const sf::Texture& texture, int windowWidth) {
     snowSprite.setTexture(texture);
     float scaleX = (float)snowWidth / texture.getSize().x;

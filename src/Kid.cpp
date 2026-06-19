@@ -8,6 +8,30 @@ void Kid::reset() {
     kidSprite.setPosition(X_POS, groundPos - KID_HEIGHT);
 }
 
+sf::Sprite& Kid::getSprite() {
+    return kidSprite;
+}
+
+const sf::Sprite& Kid::getSprite() const {
+    return kidSprite;
+}
+
+Kid::KidState Kid::getState() const {
+    return kidState;
+}
+
+void Kid::setState(KidState state) {
+    kidState = state;
+}
+
+int Kid::getGroundPos() const {
+    return groundPos;
+}
+
+void Kid::setGroundPos(int position) {
+    groundPos = position;
+}
+
 void Kid::setTexture(const sf::Texture& texture) {
     kidSprite.setTexture(texture);
     float scaleX = (float)KID_WIDTH / texture.getSize().x;

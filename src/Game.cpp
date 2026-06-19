@@ -60,7 +60,7 @@ Game::Game() : window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "I Wanna Celes
     }
 
     kid.setTexture(runTextures[0]);
-    kid.groundPos = GROUND_POS;
+    kid.setGroundPos(GROUND_POS);
 
     scoreText.setFont(font);
     scoreText.setCharacterSize(40);
@@ -179,7 +179,7 @@ void Game::update() {
 
         sf::Texture* currentTexture = nullptr;
 
-        switch (kid.kidState) {
+        switch (kid.getState()) {
             case Kid::KidState::RUNNING:
                 currentTexture = &runTextures[runFrame];
                 runFrame = (runFrame + 1) % runTextures.size();
@@ -208,17 +208,17 @@ void Game::update() {
         spikeDelay = std::max(INITIAL_SPIKE_DELAY - score / 1000.f + Random::nextInt(SPIKE_DELAY_RANGE) / 1000.f, MIN_SPIKE_DELAY);
 
         Spike newSpike;
-        newSpike.spikeWidth = MIN_SPIKE_WIDTH + Random::nextInt(SPIKE_WIDTH_RANGE);
-        newSpike.spikeHeight = MIN_SPIKE_HEIGHT + Random::nextInt(SPIKE_HEIGHT_RANGE);
-        newSpike.velocityX = std::min(MIN_SPIKE_SPEED + score / 2 + Random::nextInt(SPIKE_SPEED_RANGE), MAX_SPIKE_SPEED);
-        newSpike.passed = false;
+        newSpike.setSpikeWidth(MIN_SPIKE_WIDTH + Random::nextInt(SPIKE_WIDTH_RANGE));
+        newSpike.setSpikeHeight(MIN_SPIKE_HEIGHT + Random::nextInt(SPIKE_HEIGHT_RANGE));
+        newSpike.setVelocityX(std::min(MIN_SPIKE_SPEED + score / 2 + Random::nextInt(SPIKE_SPEED_RANGE), MAX_SPIKE_SPEED));
+        newSpike.setPassed(false);
         newSpike.spawn(spikeTexture, WINDOW_WIDTH, GROUND_POS);
 
         spikes.push_back(newSpike);
     }
 
     if (!spikes.empty()) {
-        if (spikes[0].spikeSprite.getPosition().x < -spikes[0].spikeWidth) {
+        if (spikes[0].getSprite().getPosition().x < -spikes[0].getSpikeWidth()) {
             spikes.pop_front();
         }
     }
@@ -226,11 +226,11 @@ void Game::update() {
     for (auto& spike : spikes) {
         spike.move(dt);
 
-        float spikeRight = spike.spikeSprite.getPosition().x + spike.spikeWidth;
-        float kidLeft = kid.kidSprite.getPosition().x;
+        float spikeRight = spike.getSprite().getPosition().x + spike.getSpikeWidth();
+        float kidLeft = kid.getSprite().getPosition().x;
 
-        if (spikeRight < kidLeft && !spike.passed) {
-            spike.passed = true;
+        if (spikeRight < kidLeft && !spike.isPassed()) {
+            spike.setPassed(true);
             score += 10;
             if (score > highScore) {
                 highScore = score;
@@ -238,20 +238,20 @@ void Game::update() {
         }
     }
 
-    sf::FloatRect kidBounds = kid.kidSprite.getGlobalBounds();
+    sf::FloatRect kidBounds = kid.getSprite().getGlobalBounds();
     kidBounds.width *= 0.35f;
     kidBounds.height *= 0.66f;
-    kidBounds.left += kid.kidSprite.getGlobalBounds().width * 0.34f;
-    kidBounds.top += kid.kidSprite.getGlobalBounds().height * 0.34f;
+    kidBounds.left += kid.getSprite().getGlobalBounds().width * 0.34f;
+    kidBounds.top += kid.getSprite().getGlobalBounds().height * 0.34f;
 
     for (auto& spike : spikes) {
-        if (!kidBounds.intersects(spike.spikeSprite.getGlobalBounds())) {
+        if (!kidBounds.intersects(spike.getSprite().getGlobalBounds())) {
             continue;
         }
 
-        sf::Vector2f spikePos = spike.spikeSprite.getPosition();
-        float spikeW = (float)spike.spikeWidth;
-        float spikeH = (float)spike.spikeHeight;
+        sf::Vector2f spikePos = spike.getSprite().getPosition();
+        float spikeW = (float)spike.getSpikeWidth();
+        float spikeH = (float)spike.getSpikeHeight();
 
         sf::Vector2f top(spikePos.x + spikeW / 2.f, spikePos.y);
         sf::Vector2f botLeft(spikePos.x, spikePos.y + spikeH);
@@ -286,18 +286,18 @@ void Game::update() {
         snowDelay = MIN_SNOW_DELAY + Random::nextInt(SNOW_DELAY_RANGE) / 1000.f;
 
         Snow newSnowflake;
-        newSnowflake.snowWidth = MIN_SNOW_SIZE + Random::nextInt(SNOW_SIZE_RANGE);
-        newSnowflake.snowHeight = newSnowflake.snowWidth;
-        newSnowflake.velocityX = MIN_SNOW_XSPEED + Random::nextInt(SNOW_XSPEED_RANGE);
-        newSnowflake.velocityY = MIN_SNOW_YSPEED + Random::nextInt(SNOW_YSPEED_RANGE);
-        newSnowflake.angleVelocity = MIN_SNOW_ANGLE_SPEED + Random::nextInt(SNOW_ANGLE_SPEED_RANGE);
+        newSnowflake.setSnowWidth(MIN_SNOW_SIZE + Random::nextInt(SNOW_SIZE_RANGE));
+        newSnowflake.setSnowHeight(newSnowflake.getSnowWidth());
+        newSnowflake.setVelocityX(MIN_SNOW_XSPEED + Random::nextInt(SNOW_XSPEED_RANGE));
+        newSnowflake.setVelocityY(MIN_SNOW_YSPEED + Random::nextInt(SNOW_YSPEED_RANGE));
+        newSnowflake.setAngleVelocity(MIN_SNOW_ANGLE_SPEED + Random::nextInt(SNOW_ANGLE_SPEED_RANGE));
         newSnowflake.spawn(snowTexture, WINDOW_WIDTH);
 
         snowflakes.push_back(newSnowflake);
     }
 
     if (!snowflakes.empty()) {
-        if (snowflakes[0].snowSprite.getPosition().x < -snowflakes[0].snowWidth / 2.f || snowflakes[0].snowSprite.getPosition().y > GROUND_POS + snowflakes[0].snowHeight / 2.f) {
+        if (snowflakes[0].getSprite().getPosition().x < -snowflakes[0].getSnowWidth() / 2.f || snowflakes[0].getSprite().getPosition().y > GROUND_POS + snowflakes[0].getSnowHeight() / 2.f) {
             snowflakes.pop_front();
         }
     }
@@ -322,7 +322,7 @@ void Game::render() {
             window.draw(background);
             drawSnow();
             window.draw(land);
-            window.draw(kid.kidSprite);
+            window.draw(kid.getSprite());
             drawSpikes();
 
             scoreText.setString("High Score: " + std::to_string(highScore) + "\nScore: " + std::to_string(score));
@@ -340,7 +340,7 @@ void Game::render() {
             window.draw(background);
             drawSnow();
             window.draw(land);
-            window.draw(kid.kidSprite);
+            window.draw(kid.getSprite());
             drawSpikes();
 
             sf::RectangleShape overlay(sf::Vector2f(WINDOW_WIDTH, WINDOW_HEIGHT));
@@ -395,7 +395,7 @@ void Game::drawSubtext(std::string subtext, sf::Color color) {
 
 void Game::drawSpikes() {
     for (auto& spike : spikes) {
-        window.draw(spike.spikeSprite);
+        window.draw(spike.getSprite());
     }
 }
 
@@ -419,6 +419,6 @@ bool Game::isPointInTriangle(sf::Vector2f pt, sf::Vector2f v1, sf::Vector2f v2, 
 
 void Game::drawSnow() {
     for (auto& snow : snowflakes) {
-        window.draw(snow.snowSprite);
+        window.draw(snow.getSprite());
     }
 }
